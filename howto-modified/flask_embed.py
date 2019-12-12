@@ -23,29 +23,40 @@ def get_data(num_scans=10):
     Make some fake data
     :return:
     """
-    data_dict = dict(sample_names=[])
+    data_dict = dict()
     for i in range(num_scans):
         temp = np.linspace(20, 200, 8)
         seebeck = 100e-6 + 20e-6 * np.random.random(len(temp))
         sample_name = "{:03d}".format(np.random.randint(999))
-        data_dict['sample_names'].append(sample_name)
-        data_dict[f'{sample_name}_temp'] = temp
-        data_dict[f'{sample_name}_seebeck'] = seebeck
+        data_dict[sample_name] = dict(temp=temp, seebeck=seebeck)
 
-    return ColumnDataSource(data_dict)
+    return data_dict
 
 
 def bkapp(doc):
-    source = get_data()
     plot = figure(x_axis_label='Temperature (Celsius)', y_range=(0, 200e-6), y_axis_label='Seebeck Coefficient (V/K)',
                   title="Seebeck Coefficient vs Temperature")
-    for sample_name in source.data['sample_names']:
-        plot.line(f'{sample_name}_temp', f'{sample_name}_seebeck', legend=sample_name, source=source)
+
+    max_lines = 10
+    all_data = get_data(max_lines)
+
+    for sample_name, data_dict in all_data.items():
+        source = ColumnDataSource(data_dict)
+        plot.line('temp', 'seebeck', source=source, name=sample_name)
 
     def callback(attr, old, new):
-        source.data = get_data(new)
+        i = 0
+        for sample_name, data_dict in all_data.items():
+            line = plot.select_one({'name': sample_name})
+            if i < new:
+                line.visible = True
+            else:
+                line.visible = False
+            i += 1
+        # sample_names, source = get_data(new)
+        # source.data = get_data(new)
 
-    slider = Slider(start=1, end=10, value=10, step=1, title="Number of curves to plot")
+    slider = Slider(start=1, end=max_lines, value=max_lines, step=1, title="Number of curves to plot")
     slider.on_change('value', callback)
 
     doc.add_root(column(slider, plot))
